@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-// IMPORTANT: This URL must be updated to the public, hosted URL of your backend API server (Phase 1).
-// For local development, you might use 'http://localhost:3001/api' if your backend runs locally.
-// Replace this with your live Render URL when deploying.
-const API_BASE_URL = 'https://api.yourdomain.com/api'; 
+// StormBrainer API - Deployed on Render
+const API_BASE_URL = 'https://stormbrainer-galaxy.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
