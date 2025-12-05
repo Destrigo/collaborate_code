@@ -1,0 +1,557 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { LogIn, UserPlus, Zap, LogOut, ArrowLeft, Star, TrendingUp, Sun, Moon, RefreshCw, Loader2, MessageCircle, BookOpen, X } from 'lucide-react';
+
+// --- MOCK API SERVICE IMPLEMENTATION ---
+// NOTE: In a multi-file setup, this data and logic would reside in a separate 'services/api.js' file.
+
+const MOCK_USERS = [
+    { id: 'user-1', username: 'Einstein', rating: 950, is_active: true },
+    { id: 'user-2', username: 'Newton', rating: 880, is_active: true },
+    { id: 'user-3', username: 'Curie', rating: 720, is_active: false },
+    { id: 'user-4', username: 'Galileo', rating: 650, is_active: true },
+];
+
+const MOCK_GALAXIES = [
+    { id: 'g1', name: 'The Calculus Cluster', description: 'Advanced mathematical problems and theoretical physics.', category: 'Math', member_count: 42, is_public: true, is_member: true, difficulty: 5 },
+    { id: 'g2', name: 'Quantum Quests', description: 'Challenges in quantum mechanics and computation.', category: 'Physics', member_count: 101, is_public: true, is_member: false, difficulty: 4 },
+    { id: 'g3', name: 'Biological Brainstorms', description: 'Puzzles in genetics, evolution, and synthetic biology.', category: 'Biology', member_count: 55, is_public: false, is_member: false, difficulty: 3 },
+    { id: 'g4', name: 'A.I. Algorithms', description: 'Deep learning and optimization problems.', category: 'CS', member_count: 120, is_public: true, is_member: true, difficulty: 5 },
+];
+
+const MOCK_PROBLEMS = {
+    'g1': [
+        { id: 'p1', title: 'Riemann Hypothesis Simplified', description: 'Find a creative, non-mathematical explanation for the zeta function zeros.', creator_name: 'Admin', stars: 50 },
+        { id: 'p2', title: 'The Three-Body Problem (Simplified)', description: 'Simulate the motion of three large bodies in 2D space.', creator_name: 'Admin', stars: 100 }
+    ],
+};
+
+const MOCK_SOLUTIONS = {
+    'p1': [
+        { id: 's1', text: 'The zeros represent moments where the pattern underlying prime numbers achieves perfect balance, akin to finding perfect musical harmony in a chaotic storm.', author_name: 'Einstein', author_id: 'user-1', stars: 25 },
+        { id: 's2', text: 'It is a cosmic riddle that defines the boundary between order and chaos in number theory, where all uncertainty collapses into a single line.', author_name: 'Newton', author_id: 'user-2', stars: 15 },
+    ],
+};
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getCurrentUser = async () => {
+    await delay(300);
+    const token = localStorage.getItem('token');
+    if (token) {
+        const mockUser = MOCK_USERS.find(u => u.username === token);
+        if (mockUser) return mockUser;
+    }
+    throw new Error('No authenticated user found.');
+};
+
+const mockLogin = async (username, password) => {
+    await delay(500);
+    const user = MOCK_USERS.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (user) {
+        localStorage.setItem('token', user.username); 
+        return user;
+    }
+    throw new Error('Invalid credentials.');
+};
+
+const mockRegister = async (username, password) => {
+    await delay(500);
+    if (MOCK_USERS.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        throw new Error('Username already taken.');
+    }
+    const newUser = { id: `user-${Date.now()}`, username, rating: 100, is_active: true };
+    MOCK_USERS.push(newUser);
+    localStorage.setItem('token', newUser.username); 
+    return newUser;
+};
+
+const mockCreateSolution = async (problemId, text) => {
+    await delay(500);
+    const token = localStorage.getItem('token');
+    const user = MOCK_USERS.find(u => u.username === token);
+
+    if (!user) throw new Error("Authentication required.");
+    if (text.length < 50) throw new Error("Solution too short.");
+
+    const newSolution = {
+        id: `s-${Date.now()}`,
+        text: text,
+        author_name: user.username,
+        author_id: user.id,
+        stars: 0,
+    };
+
+    if (!MOCK_SOLUTIONS[problemId]) {
+        MOCK_SOLUTIONS[problemId] = [];
+    }
+    MOCK_SOLUTIONS[problemId].unshift(newSolution);
+    return newSolution;
+};
+
+const mockRateSolution = async (solutionId, value) => {
+    await delay(300);
+    const problemId = Object.keys(MOCK_SOLUTIONS).find(pId => 
+        MOCK_SOLUTIONS[pId].some(s => s.id === solutionId)
+    );
+    
+    if (problemId) {
+        const solution = MOCK_SOLUTIONS[problemId].find(s => s.id === solutionId);
+        if (solution) {
+            solution.stars += value;
+            const author = MOCK_USERS.find(u => u.id === solution.author_id);
+            if (author) {
+                author.rating += value > 0 ? 5 : -5;
+            }
+            return { success: true };
+        }
+    }
+    throw new Error("Solution not found.");
+};
+
+
+// ------------------------------------------
+// 1. AUTH COMPONENT (Replaces ./components/Auth.jsx)
+// ------------------------------------------
+const AuthComponent = ({ onLogin }) => {
+    const [isRegister, setIsRegister] = useState(false);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async () => {
+        setError('');
+        setLoading(true);
+
+        try {
+            const endpoint = isRegister ? mockRegister : mockLogin;
+            const userData = await endpoint(username, password);
+            onLogin(userData);
+        } catch (err) {
+            setError(err.message || 'Authentication failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center pt-20">
+            <div className="w-full max-w-md p-8 rounded-xl shadow-2xl bg-white dark:bg-gray-800 border border-purple-500/50">
+                <h2 className="text-3xl font-bold text-center text-purple-500 mb-6 flex items-center justify-center">
+                    <Zap className="mr-3" size={30} /> 
+                    {isRegister ? 'Join StormBrainer' : 'Log In'}
+                </h2>
+                
+                {error && <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900 rounded-lg">{error}</div>}
+
+                <div className="space-y-4">
+                    <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full p-3 border rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 focus:ring-purple-500 focus:border-purple-500 transition"
+                        disabled={loading}
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full p-3 border rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 focus:ring-purple-500 focus:border-purple-500 transition"
+                        disabled={loading}
+                    />
+                </div>
+
+                <button
+                    onClick={handleSubmit}
+                    className={`w-full mt-6 py-3 rounded-lg font-semibold text-lg transition duration-300 flex items-center justify-center 
+                        ${loading ? 'bg-purple-800 cursor-not-allowed text-white' : 'bg-purple-500 hover:bg-purple-600 text-white shadow-md'}`}
+                    disabled={loading}
+                >
+                    {loading ? <Loader2 className="animate-spin mr-2" size={20} /> : (isRegister ? <UserPlus size={20} className="mr-2" /> : <LogIn size={20} className="mr-2" />)}
+                    {isRegister ? 'Register' : 'Sign In'}
+                </button>
+
+                <p className="mt-6 text-center text-gray-500 dark:text-gray-400">
+                    {isRegister ? 'Already have an account?' : "Don't have an account?"}
+                    <button 
+                        onClick={() => setIsRegister(!isRegister)} 
+                        className="text-purple-500 hover:text-purple-400 font-medium ml-1"
+                        disabled={loading}
+                    >
+                        {isRegister ? 'Login here' : 'Register now'}
+                    </button>
+                </p>
+            </div>
+        </div>
+    );
+};
+
+
+// ------------------------------------------
+// 2. GALAXY LIST COMPONENT (Replaces ./components/galaxy/GalaxyList.jsx)
+// ------------------------------------------
+const GalaxyCard = ({ galaxy, onSelect }) => {
+    return (
+        <div 
+            onClick={() => onSelect(galaxy)}
+            className="p-5 rounded-xl shadow-lg border-l-4 transition duration-300 cursor-pointer flex flex-col justify-between h-full
+                       bg-white dark:bg-gray-800 hover:shadow-xl dark:hover:shadow-2xl
+                       border-pink-500 hover:border-pink-400 dark:border-pink-400"
+        >
+            <div>
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white pr-4">{galaxy.name}</h3>
+                    <span className="text-sm font-semibold text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/50 px-2 py-0.5 rounded-full">{galaxy.category}</span>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3">{galaxy.description}</p>
+            </div>
+            
+            <div className="flex justify-between items-center text-xs pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-gray-500 dark:text-gray-400 flex items-center">
+                    <MessageCircle size={14} className="mr-1 text-sky-500" />
+                    {galaxy.member_count} Members
+                </span>
+                <span className={`font-medium px-2 py-0.5 rounded-full ${
+                    galaxy.is_member ? 'bg-emerald-600/50 text-emerald-300' : 
+                    (galaxy.is_public ? 'bg-amber-600/50 text-amber-300' : 'bg-red-600/50 text-red-300')
+                }`}>
+                    {galaxy.is_member ? 'Member' : (galaxy.is_public ? 'Public' : 'Private')}
+                </span>
+            </div>
+        </div>
+    );
+};
+
+
+const GalaxyListComponent = ({ user, onEnterGalaxy }) => {
+    const [galaxies, setGalaxies] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const fetchGalaxies = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await delay(500);
+            setGalaxies(MOCK_GALAXIES);
+        } catch (err) {
+            setError(err.message || 'Failed to load galaxies.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchGalaxies();
+    }, [fetchGalaxies]);
+
+    return (
+        <div className="py-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Galaxies Explorer</h2>
+                <button 
+                    onClick={fetchGalaxies} 
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium transition flex items-center disabled:opacity-50"
+                    disabled={loading}
+                >
+                    {loading ? <Loader2 className="animate-spin mr-2" size={18} /> : <RefreshCw size={18} className="mr-2" />}
+                    {loading ? 'Loading...' : 'Refresh'}
+                </button>
+            </div>
+
+            {error && <div className="p-4 mb-6 text-sm text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900 rounded-lg">{error}</div>}
+
+            {loading && galaxies.length === 0 ? (
+                <div className="text-center py-20 text-gray-400">
+                    <Loader2 className="animate-spin mx-auto mb-4" size={36} />
+                    <p>Scanning the cosmic map...</p>
+                </div>
+            ) : galaxies.length === 0 ? (
+                <div className="text-center py-20 text-gray-500 bg-white dark:bg-gray-800 rounded-xl p-8">
+                    <p className="text-xl">No galaxies found.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {galaxies.map(galaxy => (
+                        <GalaxyCard key={galaxy.id} galaxy={galaxy} onSelect={onEnterGalaxy} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ------------------------------------------
+// 3. LEADERBOARD COMPONENT (Replaces ./components/Leaderboard.jsx)
+// ------------------------------------------
+const LeaderboardComponent = () => {
+    const sortedUsers = useMemo(() => {
+        return [...MOCK_USERS].sort((a, b) => b.rating - a.rating);
+    }, []);
+
+    return (
+        <div className="py-8">
+            <h2 className="text-3xl font-bold text-yellow-500 mb-6 flex items-center">
+                <TrendingUp size={28} className="mr-2" /> Global Leaderboard
+            </h2>
+            <div className="overflow-x-auto shadow-xl rounded-xl">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Username</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rating (Stars)</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {sortedUsers.map((user, index) => (
+                            <tr key={user.id} className={index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{user.username}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right text-yellow-500 flex items-center justify-end">
+                                    {user.rating} <Star size={16} className="ml-1 fill-yellow-500" />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// ------------------------------------------
+// 4. GALAXY VIEW COMPONENTS (Replaces ./components/galaxy/GalaxyView.jsx)
+// ------------------------------------------
+
+const SolutionForm = ({ problemId, onSolutionSuccess }) => {
+    const [text, setText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState(null);
+
+    const handleSubmit = async () => {
+        if (text.trim().length < 50) {
+            setMessage({ type: 'error', text: 'Solution must be at least 50 characters long.' });
+            return;
+        }
+        
+        setMessage(null);
+        setLoading(true);
+        try {
+            const newSolution = await mockCreateSolution(problemId, text);
+            onSolutionSuccess(newSolution);
+            setText('');
+            setMessage({ type: 'success', text: 'Success! Solution posted.' });
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message || 'Failed to post solution.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-xl shadow-xl mt-8 lg:mt-0 border-t-4 border-emerald-500">
+            <h4 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-4">Submit Your Solution</h4>
+            
+            {message && (
+                <div className={`p-3 mb-4 text-sm rounded-lg flex items-center justify-between ${
+                    message.type === 'success' ? 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900' : 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900'
+                }`}>
+                    {message.text}
+                </div>
+            )}
+
+            <textarea
+                className="w-full h-32 p-3 border rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition"
+                placeholder="Type your detailed solution here (min 50 chars)..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+            />
+            <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full mt-3 py-3 rounded-lg font-semibold text-lg transition duration-300 flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
+            >
+                {loading ? <Loader2 className="animate-spin mr-2" size={20} /> : <BookOpen size={20} className="mr-2" />}
+                Post Solution
+            </button>
+        </div>
+    );
+};
+
+const SolutionCard = ({ solution, userId, onRate }) => {
+    const isAuthor = userId === solution.author_id;
+
+    return (
+        <div className={`p-4 rounded-lg shadow-inner mb-3 border ${isAuthor ? 'border-purple-500 bg-purple-50 dark:bg-gray-700' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/70'}`}>
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{solution.author_name} {isAuthor && '(You)'}</span>
+                <div className="flex items-center">
+                    <span className="text-lg font-bold text-yellow-500 mr-1">{solution.stars}</span>
+                    <Star size={18} className="fill-yellow-500" />
+                </div>
+            </div>
+            <p className="text-gray-800 dark:text-gray-200 mb-3 whitespace-pre-wrap">{solution.text}</p>
+            
+            {!isAuthor && (
+                <div className="flex justify-end space-x-2">
+                    <button
+                        onClick={() => onRate(solution.id, 1)}
+                        className="text-emerald-500 hover:text-emerald-600 p-1 transition"
+                        title="Upvote Solution"
+                    >
+                        <Zap size={18} />
+                    </button>
+                    <button
+                        onClick={() => onRate(solution.id, -1)}
+                        className="text-red-500 hover:text-red-600 p-1 transition"
+                        title="Downvote Solution"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const GalaxyViewComponent = ({ user, galaxy, goBack }) => {
+    const [problems] = useState(MOCK_PROBLEMS[galaxy.id] || []);
+    const [selectedProblem, setSelectedProblem] = useState(problems[0] || null);
+    const [solutions, setSolutions] = useState([]);
+    const [loadingSolutions, setLoadingSolutions] = useState(false);
+
+    const fetchSolutions = useCallback(async (problemId) => {
+        setLoadingSolutions(true);
+        try {
+            await delay(500);
+            const data = MOCK_SOLUTIONS[problemId] || [];
+            // Sort by stars descending
+            setSolutions(data.sort((a, b) => b.stars - a.stars)); 
+        } catch (err) {
+            console.error('Failed to load solutions:', err);
+            setSolutions([]);
+        } finally {
+            setLoadingSolutions(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selectedProblem) {
+            fetchSolutions(selectedProblem.id);
+        }
+    }, [selectedProblem, fetchSolutions]);
+
+    const handleNewSolution = (newSolution) => {
+        // Add new solution and re-sort by stars
+        setSolutions(prev => [newSolution, ...prev].sort((a, b) => b.stars - a.stars));
+    };
+
+    const handleRateSolution = async (solutionId, value) => {
+        try {
+            await mockRateSolution(solutionId, value);
+            // Re-fetch or locally update solutions to reflect new rating and potentially new rank
+            if (selectedProblem) {
+                 // For simplicity and to reflect the updated mock data, we re-fetch.
+                 // In a real app, you might update the state locally.
+                fetchSolutions(selectedProblem.id);
+            }
+        } catch (error) {
+            console.error(error.message);
+        }
+    };
+
+    return (
+        <div className="py-8">
+            <button 
+                onClick={goBack} 
+                className="text-purple-500 hover:text-purple-400 transition flex items-center font-medium mb-6 text-lg"
+            >
+                <ArrowLeft size={20} className="mr-2" />
+                Back to Galaxies
+            </button>
+            
+            <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">{galaxy.name}</h2>
+            <p className="text-xl text-gray-500 dark:text-gray-400 mb-8">{galaxy.description}</p>
+            
+            {/* Problem Selector */}
+            {problems.length > 0 && (
+                <div className="flex overflow-x-auto pb-4 mb-8 space-x-4 bg-gray-100 dark:bg-gray-800 p-3 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+                    {problems.map(problem => (
+                        <button
+                            key={problem.id}
+                            onClick={() => setSelectedProblem(problem)}
+                            className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition duration-200 text-sm ${
+                                selectedProblem && selectedProblem.id === problem.id 
+                                    ? 'bg-pink-500 text-white font-bold shadow-lg' 
+                                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                        >
+                            {problem.title}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Problem Details and Solutions */}
+            <div className="lg:grid lg:grid-cols-3 lg:gap-8">
+                {/* Left Column: Problem Detail & Solutions */}
+                <div className="lg:col-span-2">
+                    {selectedProblem ? (
+                        <>
+                            {/* Problem Detail */}
+                            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl mb-6 border-l-4 border-pink-500">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">{selectedProblem.title}</h3>
+                                    <span className="text-lg font-bold text-yellow-500 flex items-center">
+                                        {selectedProblem.stars} <Star size={20} className="ml-1 fill-yellow-500" />
+                                    </span>
+                                </div>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4 whitespace-pre-wrap">{selectedProblem.description}</p>
+                                <p className="text-sm text-gray-500">Created by: {selectedProblem.creator_name}</p>
+                            </div>
+                            
+                            {/* Solutions List */}
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 mt-8 flex items-center">
+                                Solutions ({solutions.length})
+                                {loadingSolutions && <Loader2 className="animate-spin ml-3 text-pink-500" size={20} />}
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                {solutions.length === 0 && !loadingSolutions ? (
+                                    <p className="text-gray-500 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">No solutions yet. Be the first!</p>
+                                ) : (
+                                    solutions.map(solution => (
+                                        <SolutionCard 
+                                            key={solution.id} 
+                                            solution={solution} 
+                                            userId={user.id} 
+                                            onRate={handleRateSolution}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-gray-500 p-6 bg-white dark:bg-gray-800 rounded-xl text-center">This galaxy has no problems yet.</p>
+                    )}
+                </div>
+                
+                {/* Right Column: Submission Form (Sticky on desktop) */}
+                <div className="lg:col-span-1">
+                    {selectedProblem && (
+                        <SolutionForm 
+                            problemId={selectedProblem.id}
+                            onSolutionSuccess={handleNewSolution}
+                        />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
