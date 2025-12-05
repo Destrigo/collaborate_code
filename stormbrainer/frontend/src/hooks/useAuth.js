@@ -1,8 +1,7 @@
 // frontend/src/hooks/useAuth.js
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { getCurrentUser, login as apiLogin, register as apiRegister } from '../services/api';
-// Assuming AuthContext.jsx is implemented
 
 /**
  * @description Central hook for managing user authentication state.
@@ -31,12 +30,13 @@ export const useAuth = () => {
         loadUser();
     }, []);
 
-    const login = async (email, password) => {
+    const login = async (username, password) => {
         setIsLoading(true);
         setError(null);
         try {
-            const userData = await apiLogin(email, password);
+            const { user: userData } = await apiLogin(username, password);
             setUser(userData);
+            return userData;
         } catch (err) {
             setError(err.message || 'Login failed.');
             throw err;
@@ -45,12 +45,13 @@ export const useAuth = () => {
         }
     };
 
-    const register = async (username, email, password) => {
+    const register = async (username, password) => {
         setIsLoading(true);
         setError(null);
         try {
-            const userData = await apiRegister(username, email, password);
+            const { user: userData } = await apiRegister(username, password);
             setUser(userData);
+            return userData;
         } catch (err) {
             setError(err.message || 'Registration failed.');
             throw err;
@@ -66,13 +67,13 @@ export const useAuth = () => {
 
     return {
         user,
+        setUser,
         isLoading,
         error,
         login,
         register,
         logout,
         isAuthenticated: !!user,
-        // Helper for displaying rating
         globalRating: user?.rating || 0
     };
 };
