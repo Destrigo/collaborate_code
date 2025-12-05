@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Loader2, Star, LogOut, Sun, Moon } from "lucide-react";
 import AuthComponent from "./components/auth/LoginForm";
 import GalaxyViewComponent from "./components/galaxy/GalaxyView";
@@ -12,11 +12,20 @@ const App = () => {
     const [currentGalaxy, setCurrentGalaxy] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
     
-    // Default to dark mode for a space-themed app
     const [darkMode, setDarkMode] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme ? savedTheme === 'dark' : true; 
     });
+
+    // Generate stars once on mount
+    const stars = useMemo(() => {
+        return Array.from({ length: 200 }).map(() => ({
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            size: Math.random() * 2 + 1,
+            duration: Math.random() * 3 + 2
+        }));
+    }, []);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -62,12 +71,6 @@ const App = () => {
         setView('galaxy');
     };
 
-    const StarryBackground = () => (
-        <div className="fixed inset-0 -z-10 overflow-hidden">
-            <div className="absolute inset-0 bg-stars-animation dark:bg-gray-900"></div>
-        </div>
-    );
-
     const renderContent = () => {
         if (loadingAuth) {
             return (
@@ -100,10 +103,30 @@ const App = () => {
     };
 
     return (
-        <div className="min-h-screen font-sans antialiased transition-colors duration-500 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-            <StarryBackground />
+        <div className="min-h-screen font-sans antialiased transition-colors duration-300 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+            {/* Starry Background */}
+            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
+                    {stars.map((star, i) => (
+                        <div
+                            key={i}
+                            className="absolute rounded-full bg-white"
+                            style={{
+                                left: `${star.x}%`,
+                                top: `${star.y}%`,
+                                width: `${star.size}px`,
+                                height: `${star.size}px`,
+                                opacity: 0.6,
+                                animation: `twinkle ${star.duration}s ease-in-out infinite`,
+                                animationDelay: `${Math.random() * 2}s`
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
             
-            <header className="sticky top-0 z-50 p-4 border-b border-gray-200 dark:border-gray-800 backdrop-blur-md bg-opacity-70 dark:bg-gray-900/80">
+            {/* Header */}
+            <header className="sticky top-0 z-50 p-4 border-b border-gray-200 dark:border-gray-800 backdrop-blur-md bg-white/70 dark:bg-gray-900/80">
                 <div className="flex items-center justify-between max-w-7xl mx-auto">
                     <h1 
                         className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 cursor-pointer"
@@ -111,82 +134,60 @@ const App = () => {
                     >
                         StormBrainer 🌌
                     </h1>
-                    <nav className="flex items-center space-x-4">
+                    <nav className="flex items-center space-x-2 sm:space-x-4">
                         {user && (
                             <>
                                 <button
                                     onClick={() => setView('browser')}
-                                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors hidden sm:block ${view === 'browser' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors hidden sm:block ${
+                                        view === 'browser' 
+                                            ? 'bg-purple-600 text-white' 
+                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
                                 >
                                     Galaxies
                                 </button>
                                 <button
                                     onClick={() => setView('leaderboard')}
-                                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors hidden sm:block ${view === 'leaderboard' ? 'bg-yellow-500 text-gray-900' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors hidden sm:block ${
+                                        view === 'leaderboard' 
+                                            ? 'bg-yellow-500 text-gray-900' 
+                                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
                                 >
                                     Leaderboard ⭐
                                 </button>
                                 
-                                <span className="text-sm font-semibold text-gray-400 border border-gray-700 px-3 py-1 rounded-full flex items-center bg-gray-800/50">
-                                    {user.username} <span className="ml-2 text-yellow-400 flex items-center">{user.rating || 0} <Star size={14} className="ml-0.5 fill-yellow-400" /></span>
+                                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-full flex items-center bg-white/50 dark:bg-gray-800/50">
+                                    {user.username} 
+                                    <span className="ml-2 text-yellow-500 flex items-center">
+                                        {user.rating || 0} <Star size={14} className="ml-0.5 fill-yellow-500" />
+                                    </span>
                                 </span>
                                 <button 
-                                  onClick={handleLogout} 
-                                  className="p-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-                                  title="Logout"
+                                    onClick={handleLogout} 
+                                    className="p-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                                    title="Logout"
                                 >
-                                  <LogOut size={18} />
+                                    <LogOut size={18} />
                                 </button>
                             </>
                         )}
                         <button
-                          onClick={() => setDarkMode(!darkMode)}
-                          className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
-                          title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            onClick={() => setDarkMode(!darkMode)}
+                            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+                            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                         >
-                          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                     </nav>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto p-4">
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto p-4 sm:p-6">
                 {renderContent()}
             </main>
-            
-            <style jsx="true" global="true">{`
-              @keyframes twinkle {
-                0%, 100% { transform: scale(1); opacity: 0.5; }
-                50% { transform: scale(1.3); opacity: 1; }
-              }
-              
-              .bg-stars-animation {
-                box-shadow: 
-                  ${Array.from({ length: 1500 }).map(() => {
-                    const x = Math.floor(Math.random() * 100);
-                    const y = Math.floor(Math.random() * 100);
-                    const size = Math.random() * 1.5 + 0.5;
-                    return `${x}vw ${y}vh 0 ${size}px #fff`;
-                  }).join(', ')};
-                
-                &::before {
-                  content: '';
-                  position: absolute;
-                  top: 0;
-                  left: 0;
-                  width: 100%;
-                  height: 100%;
-                  box-shadow: 
-                    ${Array.from({ length: 50 }).map(() => {
-                      const x = Math.floor(Math.random() * 100);
-                      const y = Math.floor(Math.random() * 100);
-                      const size = Math.random() * 2 + 1;
-                      return `${x}vw ${y}vh 0 ${size}px rgba(255, 255, 255, 0.7)`;
-                    }).join(', ')};
-                  animation: twinkle 5s infinite alternate;
-                }
-              }
-            `}</style>
         </div>
     );
 };
