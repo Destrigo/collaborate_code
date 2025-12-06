@@ -9,6 +9,7 @@ import { login, register } from '../../services/api';
 const AuthComponent = ({ onLogin }) => {
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,7 @@ const AuthComponent = ({ onLogin }) => {
             if (isLoginMode) {
                 response = await login(username, password);
             } else {
-                response = await register(username, password);
+                response = await register(username, email, password);
             }
             // Pass user data to parent
             onLogin(response.user);
@@ -46,6 +47,14 @@ const AuthComponent = ({ onLogin }) => {
                         placeholder="Username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        required
+                        className="w-full p-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         required
                         className="w-full p-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                     />
