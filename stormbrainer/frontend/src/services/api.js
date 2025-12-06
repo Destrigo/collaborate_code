@@ -46,10 +46,10 @@ export const login = async (username, password) => {
     return response; // { user, token }
 };
 
-export const register = async (username, password) => {
+export const register = async (username, email, password) => {
     const response = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, email, password }),
     });
     if (response.token) {
         localStorage.setItem('token', response.token);
