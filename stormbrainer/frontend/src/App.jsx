@@ -5,7 +5,7 @@ import AuthComponent from "./components/auth/LoginForm";
 import GalaxyViewComponent from "./components/galaxy/GalaxyView";
 import LeaderboardComponent from "./components/Leaderboard";
 import GalaxyListComponent from "./components/galaxy/GalaxyList";
-import UserProfileModal from "./components/user/UserProfile";
+import UserProfileModal from "./components/user/UserProfileModal";
 import { getCurrentUser } from "./services/api";
 
 // ============================================
