@@ -155,7 +155,7 @@ const DraggableSolarSystem = ({ problems, solutions, onProblemClick, onSolutionC
 const OrbitingPlanetWithAsteroids = ({ problem, solutions, orbitIndex, totalPlanets, onProblemClick, onSolutionClick }) => {
   const [rotation, setRotation] = useState(0);
 
-  const baseOrbitRadius = 180;
+  const baseOrbitRadius = 60;
   const orbitRadius = baseOrbitRadius + (orbitIndex * 80);
   
   const baseSize = 50;
