@@ -321,19 +321,53 @@ const App = () => {
                                     Leaderboard ⭐
                                 </button>
                                 
-                                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-full flex items-center bg-white/50 dark:bg-gray-800/50">
-                                    {user.username} 
-                                    <span className="ml-2 text-yellow-500 flex items-center">
-                                        {user.rating || 0} <Star size={14} className="ml-0.5 fill-yellow-500" />
-                                    </span>
-                                </span>
-                                <button 
-                                    onClick={handleLogout} 
-                                    className="p-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-                                    title="Logout"
-                                >
-                                    <LogOut size={18} />
-                                </button>
+                                {/* USER PROFILE SECTION - NEW */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        {/* Avatar */}
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                                            {user.username.charAt(0).toUpperCase()}
+                                        </div>
+                                        
+                                        {/* User Info - Hidden on mobile */}
+                                        <div className="text-left hidden lg:block">
+                                            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                {user.username}
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                <Star size={10} fill="gold" className="text-yellow-500" />
+                                                {user.rating || 0}
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {/* Dropdown Menu */}
+                                    {showProfileMenu && (
+                                        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                                            <button
+                                                onClick={() => {
+                                                    setIsProfileOpen(true);
+                                                    setShowProfileMenu(false);
+                                                }}
+                                                className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-900 dark:text-white transition-colors"
+                                            >
+                                                <User size={16} />
+                                                View Profile
+                                            </button>
+                                            <hr className="my-2 border-gray-200 dark:border-gray-700" />
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-red-600 dark:text-red-400 transition-colors"
+                                            >
+                                                <LogOut size={16} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </>
                         )}
                         <button
@@ -351,6 +385,16 @@ const App = () => {
             <main className="max-w-7xl mx-auto p-4 sm:p-6">
                 {renderContent()}
             </main>
+
+            {/* User Profile Modal */}
+            {user && (
+                <UserProfileModal
+                    user={user}
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                    onUpdateUser={handleUpdateUser}
+                />
+            )}
         </div>
     );
 };

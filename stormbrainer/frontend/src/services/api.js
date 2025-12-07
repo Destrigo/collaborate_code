@@ -125,3 +125,74 @@ export const getLeaderboardData = () => {
 export const getCategories = () => {
     return ['Math', 'Logic', 'Programming', 'Riddles', 'General'];
 };
+
+// ============================================
+// USER STATS API (ADD THESE)
+// ============================================
+
+// Get user statistics
+export const getUserStats = async (userId) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/users/${userId}/stats`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch user stats');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Get user stats error:', error);
+        throw error;
+    }
+};
+
+// Update user profile
+export const updateUserProfile = async (userId, updates) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to update profile');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Update profile error:', error);
+        throw error;
+    }
+};
+
+// Get user achievements
+export const getUserAchievements = async (userId) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/users/${userId}/achievements`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch achievements');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Get achievements error:', error);
+        throw error;
+    }
+};
