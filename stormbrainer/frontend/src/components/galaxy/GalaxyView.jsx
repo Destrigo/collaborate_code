@@ -22,13 +22,17 @@ const DraggableSolarSystem = ({ problems, solutions, onProblemClick, onSolutionC
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
 
-  if (!problems || problems.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-96 text-gray-500 dark:text-gray-400">
-        No problems in this galaxy yet
-      </div>
-    );
-  }
+  // Always call useEffect unconditionally
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
 
   const handleMouseDown = (e) => {
     if (e.target === containerRef.current || e.target.closest('.draggable-area')) {
@@ -49,9 +53,7 @@ const DraggableSolarSystem = ({ problems, solutions, onProblemClick, onSolutionC
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
@@ -60,40 +62,24 @@ const DraggableSolarSystem = ({ problems, solutions, onProblemClick, onSolutionC
     setZoom(1);
   };
 
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, dragStart]);
-
   return (
     <div className="relative w-full h-[90vh] bg-gradient-to-b from-indigo-950 via-purple-900 to-black rounded-xl overflow-hidden">
+      {/* Show "No problems" message if empty */}
+      {(!problems || problems.length === 0) && (
+        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+          No problems in this galaxy yet
+        </div>
+      )}
+
       {/* Controls */}
       <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-        <button
-          onClick={handleZoomIn}
-          className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors"
-          title="Zoom In"
-        >
+        <button onClick={handleZoomIn} className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors" title="Zoom In">
           <ZoomIn size={20} />
         </button>
-        <button
-          onClick={handleZoomOut}
-          className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors"
-          title="Zoom Out"
-        >
+        <button onClick={handleZoomOut} className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors" title="Zoom Out">
           <ZoomOut size={20} />
         </button>
-        <button
-          onClick={handleReset}
-          className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors"
-          title="Reset View"
-        >
+        <button onClick={handleReset} className="p-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-white backdrop-blur-sm transition-colors" title="Reset View">
           <Maximize2 size={20} />
         </button>
       </div>
@@ -103,71 +89,64 @@ const DraggableSolarSystem = ({ problems, solutions, onProblemClick, onSolutionC
         Zoom: {(zoom * 100).toFixed(0)}%
       </div>
 
-      {/* Instructions */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gray-800/80 rounded-lg text-white text-sm backdrop-blur-sm text-center max-w-2xl">
-        🖱️ Click and drag to move • 🔍 Use zoom controls • 🪐 Click planets for problems • ☄️ Click asteroids for solutions
-      </div>
+      {/* Only render solar system if problems exist */}
+      {problems && problems.length > 0 && (
+        <div
+          ref={containerRef}
+          className="draggable-area absolute inset-0 cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            width: '300%',
+            height: '300%',
+            left: '-100%',
+            top: '-100%'
+          }}
+        >
+          {/* Starry background */}
+          <div className="absolute inset-0 pointer-events-none">
+            {[...Array(300)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full bg-white animate-pulse"
+                style={{
+                  width: Math.random() * 2 + 1 + 'px',
+                  height: Math.random() * 2 + 1 + 'px',
+                  top: Math.random() * 100 + '%',
+                  left: Math.random() * 100 + '%',
+                  opacity: Math.random() * 0.7 + 0.3,
+                  animationDuration: Math.random() * 3 + 2 + 's',
+                  animationDelay: Math.random() * 2 + 's'
+                }}
+              />
+            ))}
+          </div>
 
-      {/* Draggable Container */}
-      <div
-        ref={containerRef}
-        className="draggable-area absolute inset-0 cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          width: '300%',
-          height: '300%',
-          left: '-100%',
-          top: '-100%'
-        }}
-      >
-        {/* Starry background */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(300)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full bg-white animate-pulse"
-              style={{
-                width: Math.random() * 2 + 1 + 'px',
-                height: Math.random() * 2 + 1 + 'px',
-                top: Math.random() * 100 + '%',
-                left: Math.random() * 100 + '%',
-                opacity: Math.random() * 0.7 + 0.3,
-                animationDuration: Math.random() * 3 + 2 + 's',
-                animationDelay: Math.random() * 2 + 's'
-              }}
+          {/* Central Sun */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-yellow-400 opacity-30 blur-3xl animate-pulse" style={{ width: '200px', height: '200px', margin: '-50px' }} />
+              <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-orange-500 shadow-2xl flex items-center justify-center animate-pulse">
+                <Star className="w-16 h-16 text-white" fill="white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Planets & Asteroids */}
+          {problems.map((problem, index) => (
+            <OrbitingPlanetWithAsteroids
+              key={problem.id}
+              problem={problem}
+              solutions={solutions[problem.id] || []}
+              orbitIndex={index}
+              totalPlanets={problems.length}
+              onProblemClick={onProblemClick}
+              onSolutionClick={onSolutionClick}
             />
           ))}
         </div>
-
-        {/* Central Sun */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
-          <div className="relative">
-            {/* Sun glow effect */}
-            <div className="absolute inset-0 rounded-full bg-yellow-400 opacity-30 blur-3xl animate-pulse" 
-                 style={{ width: '200px', height: '200px', margin: '-50px' }} />
-            
-            {/* Sun core */}
-            <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-orange-500 shadow-2xl flex items-center justify-center animate-pulse">
-              <Star className="w-16 h-16 text-white" fill="white" />
-            </div>
-          </div>
-        </div>
-
-        {/* Orbiting Problems as Planets with Asteroid Solutions */}
-        {problems.map((problem, index) => (
-          <OrbitingPlanetWithAsteroids
-            key={problem.id}
-            problem={problem}
-            solutions={solutions[problem.id] || []}
-            orbitIndex={index}
-            totalPlanets={problems.length}
-            onProblemClick={onProblemClick}
-            onSolutionClick={onSolutionClick}
-          />
-        ))}
-      </div>
+      )}
     </div>
   );
 };
