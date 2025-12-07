@@ -22,7 +22,7 @@ const AuthComponent = ({ onLogin }) => {
         try {
             let response;
             if (isLoginMode) {
-                response = await login(username, password);
+                response = await login(email, password);
             } else {
                 response = await register(username, email, password);
             }

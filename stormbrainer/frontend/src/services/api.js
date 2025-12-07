@@ -35,7 +35,7 @@ const apiFetch = async (endpoint, options = {}) => {
 
 // --- Authentication ---
 
-export const login = async (username, password) => {
+export const login = async (email, password) => {
     const response = await apiFetch('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
