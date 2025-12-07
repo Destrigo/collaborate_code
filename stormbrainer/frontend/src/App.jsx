@@ -1,10 +1,11 @@
 // export default App;
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, Star, LogOut, Sun, Moon } from "lucide-react";
+import { Loader2, Star, LogOut, Sun, Moon, User } from "lucide-react";
 import AuthComponent from "./components/auth/LoginForm";
 import GalaxyViewComponent from "./components/galaxy/GalaxyView";
 import LeaderboardComponent from "./components/Leaderboard";
 import GalaxyListComponent from "./components/galaxy/GalaxyList";
+import UserProfileModal from "./components/user/UserProfile";
 import { getCurrentUser } from "./services/api";
 
 // ============================================
@@ -173,7 +174,9 @@ const App = () => {
     const [view, setView] = useState('browser'); 
     const [currentGalaxy, setCurrentGalaxy] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
-    
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+
     const [darkMode, setDarkMode] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme ? savedTheme === 'dark' : true; 
@@ -219,6 +222,10 @@ const App = () => {
     const handleLogin = (userData) => {
         setUser(userData);
         setView('browser');
+    };
+
+    const handleUpdateUser = (updatedUser) => {
+        setUser(updatedUser);
     };
 
     const handleLogout = () => {

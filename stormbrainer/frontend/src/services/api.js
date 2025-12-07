@@ -134,7 +134,7 @@ export const getCategories = () => {
 export const getUserStats = async (userId) => {
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/users/${userId}/stats`, {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/stats`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
@@ -155,7 +155,7 @@ export const getUserStats = async (userId) => {
 export const updateUserProfile = async (userId, updates) => {
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/users/${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ export const updateUserProfile = async (userId, updates) => {
 export const getUserAchievements = async (userId) => {
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/users/${userId}/achievements`, {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/achievements`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
