@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import AuthForm from '@/components/auth/AuthForm';
 import GalaxyList from '@/components/galaxy/GalaxyList';
 import GalaxyView from '@/components/galaxy/GalaxyView';
 import Leaderboard from '@/components/Leaderboard';
@@ -65,10 +64,6 @@ const Index = () => {
           <span className="text-xl text-muted-foreground">Checking credentials...</span>
         </div>
       );
-    }
-
-    if (!user) {
-      return <AuthForm onLogin={handleLogin} onRegister={handleRegister} isLoading={authLoading} />;
     }
 
     if (view === 'galaxy' && currentGalaxy) {
