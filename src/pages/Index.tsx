@@ -39,7 +39,7 @@ const Index = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/login", { replace: true });
+    navigate("/LoginPage", { replace: true });
   };
 
   const enterGalaxy = (galaxy: Galaxy) => {
