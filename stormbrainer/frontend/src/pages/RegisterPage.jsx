@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '../hooks/useAuth';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Loader2, Mail, Lock, User, ArrowRight } from 'lucide-react';
-import StarryBackground from '@/components/StarryBackground';
+import StarryBackground from '../components/StarryBackground';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
