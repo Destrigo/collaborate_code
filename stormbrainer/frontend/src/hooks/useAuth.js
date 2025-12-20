@@ -45,11 +45,11 @@ export const useAuth = () => {
         }
     };
 
-    const register = async (username, password) => {
+    const register = async (username, email, password) => {
         setIsLoading(true);
         setError(null);
         try {
-            const { user: userData } = await apiRegister(username, password);
+            const { user: userData } = await apiRegister(username, email, password);
             setUser(userData);
             return userData;
         } catch (err) {
