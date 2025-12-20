@@ -8,69 +8,72 @@ export const useAuth = () => {
 
   useEffect(() => {
     const loadUser = async () => {
-      if (localStorage.getItem('token')) {
-        try {
-          const userData = await getCurrentUser();
-          setUser(userData);
-        } catch (err) {
-          localStorage.removeItem('token');
-          setUser(null);
-          console.error("Token invalid:", err);
-        }
+      const token = localStorage.getItem("token");
+
+      if (!token || token === "null" || token === "undefined") {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } catch {
+        localStorage.removeItem("token");
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     loadUser();
   }, []);
 
-  // ✅ CHANGED: username → email
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user: userData } = await apiLogin(email, password);
+      const { user: userData, token } = await apiLogin(email, password);
+      localStorage.setItem("token", token);
       setUser(userData);
       return userData;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed.';
-      setError(message);
-      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ✅ CHANGED: Added email as first parameter, username as third
   const register = async (email: string, password: string, username: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user: userData } = await apiRegister(email, password, username);
+      const { user: userData, token } = await apiRegister(email, password, username);
+      localStorage.setItem("token", token);
       setUser(userData);
       return userData;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Registration failed.';
-      setError(message);
-      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setUser(null);
   };
 
+  const token = localStorage.getItem("token");
+  const isAuthenticated =
+    token !== null &&
+    token !== "null" &&
+    token !== "undefined";
+
   return {
     user,
-    setUser,
     isLoading,
     error,
     login,
     register,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated,
     globalRating: user?.rating || 0
   };
 };
