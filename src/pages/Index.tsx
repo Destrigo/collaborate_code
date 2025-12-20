@@ -5,14 +5,16 @@ import GalaxyView from '@/components/galaxy/GalaxyView';
 import Leaderboard from '@/components/Leaderboard';
 import StarryBackground from '@/components/StarryBackground';
 import { Button } from '@/components/ui/button';
-import { Loader2, LogOut, Star, Sun, Moon, Trophy, Globe } from 'lucide-react';
+import { LogOut, Star, Sun, Moon, Trophy, Globe } from 'lucide-react';
 import { Galaxy } from '@/services/api';
 import { Toaster } from '@/components/ui/toaster';
+import { useNavigate } from "react-router-dom";
 
+const navigate = useNavigate();
 type ViewType = 'browser' | 'galaxy' | 'leaderboard';
 
 const Index = () => {
-  const { user, isLoading: authLoading, login, register, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [view, setView] = useState<ViewType>('browser');
   const [currentGalaxy, setCurrentGalaxy] = useState<Galaxy | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
@@ -37,8 +39,7 @@ const Index = () => {
 
   const handleLogout = () => {
     logout();
-    setCurrentGalaxy(null);
-    setView('browser');
+    navigate("/login", { replace: true });
   };
 
   const enterGalaxy = (galaxy: Galaxy) => {
@@ -47,15 +48,6 @@ const Index = () => {
   };
 
   const renderContent = () => {
-    if (authLoading) {
-      return (
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="animate-spin mr-3 text-purple-500" size={40} />
-          <span className="text-xl text-muted-foreground">Checking credentials...</span>
-        </div>
-      );
-    }
-
     if (view === 'galaxy' && currentGalaxy) {
       return (
         <GalaxyView 
