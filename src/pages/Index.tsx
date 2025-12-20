@@ -35,16 +35,6 @@ const Index = () => {
     }
   }
 
-  const handleLogin = async (email: string, password: string) => {
-    await login(email, password);
-    setView('browser');
-  };
-
-  const handleRegister = async (email: string, password: string, username: string) => {
-    await register(email, password, username);
-    setView('browser');
-  };
-
   const handleLogout = () => {
     logout();
     setCurrentGalaxy(null);
