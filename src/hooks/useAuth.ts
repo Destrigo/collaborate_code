@@ -23,11 +23,12 @@ export const useAuth = () => {
     loadUser();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  // ✅ CHANGED: username → email
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user: userData } = await apiLogin(username, password);
+      const { user: userData } = await apiLogin(email, password);
       setUser(userData);
       return userData;
     } catch (err) {
@@ -39,11 +40,12 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (username: string, password: string) => {
+  // ✅ CHANGED: Added email as first parameter, username as third
+  const register = async (email: string, password: string, username: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user: userData } = await apiRegister(username, password);
+      const { user: userData } = await apiRegister(email, password, username);
       setUser(userData);
       return userData;
     } catch (err) {

@@ -36,13 +36,13 @@ const Index = () => {
     }
   }
 
-  const handleLogin = async (username: string, password: string) => {
-    await login(username, password);
+  const handleLogin = async (email: string, password: string) => {
+    await login(email, password);
     setView('browser');
   };
 
-  const handleRegister = async (username: string, password: string) => {
-    await register(username, password);
+  const handleRegister = async (email: string, password: string, username: string) => {
+    await register(email, password, username);
     setView('browser');
   };
 
