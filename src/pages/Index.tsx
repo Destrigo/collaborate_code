@@ -10,11 +10,11 @@ import { Galaxy } from '@/services/api';
 import { Toaster } from '@/components/ui/toaster';
 import { useNavigate } from "react-router-dom";
 
-const navigate = useNavigate();
 type ViewType = 'browser' | 'galaxy' | 'leaderboard';
 
 const Index = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<ViewType>('browser');
   const [currentGalaxy, setCurrentGalaxy] = useState<Galaxy | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
@@ -39,7 +39,7 @@ const Index = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/LoginPage", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const enterGalaxy = (galaxy: Galaxy) => {
