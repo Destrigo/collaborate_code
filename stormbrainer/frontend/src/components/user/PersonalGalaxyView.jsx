@@ -24,14 +24,34 @@ const PersonalGalaxyView = ({ user }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://stormbrainer-galaxy.onrender.com/api/users/${user.id}/history`, {
+      
+      // Fetch user's created problems
+      const problemsResponse = await fetch(`https://stormbrainer-galaxy.onrender.com/api/users/${user.id}/problems`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setUserHistory(data);
-      }
+      // Fetch user's submitted solutions
+      const solutionsResponse = await fetch(`https://stormbrainer-galaxy.onrender.com/api/users/${user.id}/solutions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const problemsData = problemsResponse.ok ? await problemsResponse.json() : [];
+      const solutionsData = solutionsResponse.ok ? await solutionsResponse.json() : [];
+      
+      // Calculate stats
+      const totalStarsEarned = [...problemsData, ...solutionsData].reduce((sum, item) => sum + (item.stars || 0), 0);
+      const averageRating = totalStarsEarned / (problemsData.length + solutionsData.length) || 0;
+      
+      setUserHistory({
+        problemsCreated: problemsData,
+        solutionsSubmitted: solutionsData,
+        stats: {
+          totalProblems: problemsData.length,
+          totalSolutions: solutionsData.length,
+          totalStarsEarned: totalStarsEarned,
+          averageRating: averageRating
+        }
+      });
     } catch (error) {
       console.error('Failed to load personal history:', error);
     } finally {

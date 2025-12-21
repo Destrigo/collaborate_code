@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { Grid, List, Lock, Unlock, X, CheckCircle, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Grid, List, Lock, Unlock, X, CheckCircle, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
 
 const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
   const [galaxies, setGalaxies] = useState([]);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [filter, setFilter] = useState('public');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [joinPassword, setJoinPassword] = useState('');
   const [joiningGalaxy, setJoiningGalaxy] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const categories = ['All', 'Math', 'Logic', 'Programming', 'Riddles', 'General'];
 
-  // Galaxy status types
   const GALAXY_STATUS = {
     OPEN: 'open',
     CLOSED: 'closed',
@@ -38,7 +38,7 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
   const canJoinGalaxy = (galaxy) => {
     if (galaxy.status === GALAXY_STATUS.DELETED) return false;
     if (galaxy.is_member) return true;
-    return true; // Can attempt to join
+    return true;
   };
 
   const canInteractWithGalaxy = (galaxy) => {
@@ -54,7 +54,6 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
     } else if (galaxy.is_member) {
       onEnterGalaxy(galaxy);
     } else {
-      // Public galaxy - join directly
       joinGalaxy(galaxy.id);
     }
   };
@@ -76,10 +75,35 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
         throw new Error(error.message || 'Failed to join galaxy');
       }
 
-      // Refresh galaxies
       fetchGalaxies();
       setJoiningGalaxy(null);
       setJoinPassword('');
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const createGalaxy = async (data) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://stormbrainer-galaxy.onrender.com/api/galaxies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create galaxy');
+      }
+
+      const newGalaxy = await response.json();
+      fetchGalaxies();
+      setIsCreateModalOpen(false);
+      onEnterGalaxy(newGalaxy);
     } catch (error) {
       alert(error.message);
     }
@@ -107,7 +131,7 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
 
   const filteredGalaxies = galaxies.filter(g => 
     (categoryFilter === 'All' || g.category === categoryFilter) &&
-    g.status !== GALAXY_STATUS.DELETED // Don't show deleted galaxies
+    g.status !== GALAXY_STATUS.DELETED
   );
 
   return (
@@ -143,12 +167,19 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
               <List size={20} />
             </button>
           </div>
+          
+          {/* Create Galaxy Button */}
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-4 py-2 text-white bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <Plus size={20} /> Create Galaxy
+          </button>
         </div>
       </header>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 gap-4">
-        {/* Public/Joined Tabs */}
         <div className="flex space-x-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
           <button
             onClick={() => setFilter('public')}
@@ -172,7 +203,6 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
           </button>
         </div>
 
-        {/* Category Filter */}
         {filter === 'public' && (
           <select
             value={categoryFilter}
@@ -223,6 +253,14 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
         </div>
       )}
 
+      {/* Create Galaxy Modal */}
+      <CreateGalaxyModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={createGalaxy}
+        categories={categories.filter(c => c !== 'All')}
+      />
+
       {/* Private Galaxy Join Modal */}
       {joiningGalaxy && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -254,6 +292,113 @@ const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Create Galaxy Modal Component
+const CreateGalaxyModal = ({ isOpen, onClose, onCreate, categories }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    category: categories[0] || 'General',
+    is_public: true,
+    password: ''
+  });
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onCreate(formData);
+    setFormData({
+      name: '',
+      description: '',
+      category: categories[0] || 'General',
+      is_public: true,
+      password: ''
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-lg p-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
+        <div className="flex justify-between items-center mb-4 border-b pb-3 border-gray-300 dark:border-gray-700">
+          <h3 className="text-2xl font-bold text-purple-500 dark:text-purple-400">Launch a New Galaxy 🪐</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Galaxy Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              placeholder="e.g., 'Relativity Riddles'"
+              required
+              className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="Describe your galaxy..."
+              rows={3}
+              className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              required
+              className="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.is_public}
+                onChange={(e) => setFormData({...formData, is_public: e.target.checked, password: e.target.checked ? '' : formData.password})}
+                className="form-checkbox h-5 w-5 text-purple-600"
+              />
+              <span className="text-gray-700 dark:text-gray-300">Public Galaxy</span>
+            </label>
+            
+            {!formData.is_public && (
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                placeholder="Private Access Code"
+                required
+                className="flex-grow p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+              />
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full p-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Launch Galaxy
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
