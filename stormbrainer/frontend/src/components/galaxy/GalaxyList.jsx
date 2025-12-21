@@ -1,167 +1,380 @@
-// frontend/src/components/galaxy/GalaxyList.jsx
-
 import React, { useState } from 'react';
-import { useGalaxy } from '../../hooks/useGalaxy';
-import { getCategories } from '../../services/api';
-import GalaxyCard from './GalaxyCard';
-import CreateGalaxyModal from './CreateGalaxyModal';
-import Modal from '../common/Modal'; // Assuming generic Modal component exists
+import { Grid, List, Lock, Unlock, X, CheckCircle, Trash2, Eye, EyeOff } from 'lucide-react';
 
-// Mock Modal Component (Full implementation needed in common/Modal.jsx)
-const MockModal = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-lg p-6 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-2xl transition-all">
-                <div className="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl">
-                        &times;
-                    </button>
-                </div>
-                {children}
-            </div>
-        </div>
-    );
-};
+const EnhancedGalaxyList = ({ user, onEnterGalaxy }) => {
+  const [galaxies, setGalaxies] = useState([]);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [filter, setFilter] = useState('public');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [joinPassword, setJoinPassword] = useState('');
+  const [joiningGalaxy, setJoiningGalaxy] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-const GalaxyList = ({ onEnterGalaxy }) => {
-    const { galaxies, isLoading, filter, setFilter, createGalaxy, joinGalaxy, refreshGalaxies } = useGalaxy();
-    const categories = getCategories();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [joinPassword, setJoinPassword] = useState('');
-    const [joiningGalaxy, setJoiningGalaxy] = useState(null);
-    const [categoryFilter, setCategoryFilter] = useState('All');
+  const categories = ['All', 'Math', 'Logic', 'Programming', 'Riddles', 'General'];
 
-    // Filter galaxies by category on the client side for the 'public' list view
-    const filteredGalaxies = galaxies.filter(g => 
-        categoryFilter === 'All' || g.category === categoryFilter
-    );
+  // Galaxy status types
+  const GALAXY_STATUS = {
+    OPEN: 'open',
+    CLOSED: 'closed',
+    PRIVATE: 'private',
+    DELETED: 'deleted'
+  };
 
-    const handleJoinClick = (galaxy) => {
-        if (galaxy.is_public) {
-            joinGalaxy(galaxy.id).then(() => {
-                onEnterGalaxy(galaxy);
-            }).catch(err => alert(err.message));
-        } else {
-            setJoiningGalaxy(galaxy);
-        }
-    };
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case GALAXY_STATUS.OPEN:
+        return { icon: <Unlock size={14} />, text: 'Open', color: 'bg-green-500/20 text-green-400 border-green-500/30' };
+      case GALAXY_STATUS.CLOSED:
+        return { icon: <Lock size={14} />, text: 'Closed', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
+      case GALAXY_STATUS.PRIVATE:
+        return { icon: <Eye size={14} />, text: 'Private', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' };
+      case GALAXY_STATUS.DELETED:
+        return { icon: <Trash2 size={14} />, text: 'Deleted', color: 'bg-red-500/20 text-red-400 border-red-500/30' };
+      default:
+        return { icon: <Unlock size={14} />, text: 'Open', color: 'bg-green-500/20 text-green-400 border-green-500/30' };
+    }
+  };
 
-    const submitJoinPassword = async () => {
-        try {
-            await joinGalaxy(joiningGalaxy.id, joinPassword);
-            onEnterGalaxy(joiningGalaxy);
-            setJoiningGalaxy(null);
-            setJoinPassword('');
-        } catch (error) {
-            alert(error.message);
-        }
-    };
+  const canJoinGalaxy = (galaxy) => {
+    if (galaxy.status === GALAXY_STATUS.DELETED) return false;
+    if (galaxy.is_member) return true;
+    return true; // Can attempt to join
+  };
 
-    return (
-        <div className="space-y-8">
-            <header className="flex justify-between items-center pb-4 border-b border-gray-300 dark:border-gray-700">
-                <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-                    Galaxies Available
-                </h2>
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="px-4 py-2 text-white bg-purple-600 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center"
-                >
-                    <span className="text-xl mr-2">+</span> Create New Galaxy
-                </button>
-            </header>
+  const canInteractWithGalaxy = (galaxy) => {
+    if (galaxy.status === GALAXY_STATUS.DELETED) return false;
+    if (galaxy.status === GALAXY_STATUS.CLOSED) return false;
+    if (!galaxy.is_member) return false;
+    return true;
+  };
 
-            {/* Filtering and Tabs */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                {/* Tabs for Public vs Joined */}
-                <div className="flex space-x-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                    <button
-                        onClick={() => setFilter('public')}
-                        className={`px-4 py-2 rounded-md transition-colors ${filter === 'public' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'}`}
-                    >
-                        Public Browsing
-                    </button>
-                    <button
-                        onClick={() => setFilter('joined')}
-                        className={`px-4 py-2 rounded-md transition-colors ${filter === 'joined' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'}`}
-                    >
-                        My Joined Galaxies
-                    </button>
-                </div>
+  const handleJoinClick = (galaxy) => {
+    if (galaxy.status === GALAXY_STATUS.PRIVATE && !galaxy.is_member) {
+      setJoiningGalaxy(galaxy);
+    } else if (galaxy.is_member) {
+      onEnterGalaxy(galaxy);
+    } else {
+      // Public galaxy - join directly
+      joinGalaxy(galaxy.id);
+    }
+  };
 
-                {/* Category Filter (Visible only for 'public' filter) */}
-                {filter === 'public' && (
-                    <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                        <option value="All">All Categories</option>
-                        {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                )}
-            </div>
+  const joinGalaxy = async (galaxyId, password = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`https://stormbrainer-galaxy.onrender.com/api/galaxies/${galaxyId}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password })
+      });
 
-            {/* Galaxy Grid */}
-            {isLoading && <p className="text-center py-10">Loading Galaxies...</p>}
-            
-            {!isLoading && filteredGalaxies.length === 0 && (
-                <p className="col-span-3 text-center text-gray-500 dark:text-gray-400 py-10">
-                    {filter === 'joined' ? 'You have not joined any galaxies yet. Find one in the Public Browsing tab!' : 'No public galaxies found in this category.'}
-                </p>
-            )}
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to join galaxy');
+      }
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredGalaxies.map(galaxy => (
-                    <GalaxyCard
-                        key={galaxy.id}
-                        galaxy={galaxy}
-                        onJoin={handleJoinClick}
-                        onEnter={onEnterGalaxy}
-                    />
-                ))}
-            </div>
+      // Refresh galaxies
+      fetchGalaxies();
+      setJoiningGalaxy(null);
+      setJoinPassword('');
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
-            {/* Modals */}
-            <CreateGalaxyModal 
-                isOpen={isCreateModalOpen} 
-                onClose={() => setIsCreateModalOpen(false)} 
-                onCreateSuccess={(data) => {
-                    // Create galaxy, then enter it on success
-                    return createGalaxy(data).then(newGalaxy => {
-                        onEnterGalaxy(newGalaxy);
-                        return newGalaxy;
-                    });
-                }}
-            />
+  const fetchGalaxies = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`https://stormbrainer-galaxy.onrender.com/api/galaxies?filter=${filter}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setGalaxies(data);
+    } catch (error) {
+      console.error('Failed to fetch galaxies:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            <MockModal 
-                isOpen={!!joiningGalaxy} 
-                onClose={() => setJoiningGalaxy(null)} 
-                title={`Join Private Galaxy: ${joiningGalaxy?.name}`}
+  React.useEffect(() => {
+    fetchGalaxies();
+  }, [filter]);
+
+  const filteredGalaxies = galaxies.filter(g => 
+    (categoryFilter === 'All' || g.category === categoryFilter) &&
+    g.status !== GALAXY_STATUS.DELETED // Don't show deleted galaxies
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <header className="flex justify-between items-center pb-4 border-b border-gray-300 dark:border-gray-700">
+        <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
+          Galaxies Available
+        </h2>
+        <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex gap-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+              title="Grid View"
             >
-                <p className="mb-4 text-gray-300">This galaxy requires a secret access code.</p>
-                <input
-                    type="password"
-                    placeholder="Galaxy Access Code"
-                    value={joinPassword}
-                    onChange={(e) => setJoinPassword(e.target.value)}
-                    required
-                    className="w-full p-3 mb-4 rounded-lg bg-gray-100 dark:bg-gray-700"
-                />
-                <button
-                    onClick={submitJoinPassword}
-                    className="w-full p-3 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition-colors"
-                >
-                    Authenticate & Join
-                </button>
-            </MockModal>
+              <Grid size={20} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+              title="List View"
+            >
+              <List size={20} />
+            </button>
+          </div>
         </div>
-    );
+      </header>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 gap-4">
+        {/* Public/Joined Tabs */}
+        <div className="flex space-x-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
+          <button
+            onClick={() => setFilter('public')}
+            className={`px-4 py-2 rounded-md transition-colors ${
+              filter === 'public' 
+                ? 'bg-white text-gray-900 shadow-md' 
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+            }`}
+          >
+            Public Browsing
+          </button>
+          <button
+            onClick={() => setFilter('joined')}
+            className={`px-4 py-2 rounded-md transition-colors ${
+              filter === 'joined' 
+                ? 'bg-white text-gray-900 shadow-md' 
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+            }`}
+          >
+            My Galaxies
+          </button>
+        </div>
+
+        {/* Category Filter */}
+        {filter === 'public' && (
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Galaxy Display */}
+      {isLoading ? (
+        <div className="text-center py-10">Loading Galaxies...</div>
+      ) : filteredGalaxies.length === 0 ? (
+        <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-10">
+          {filter === 'joined' 
+            ? 'You have not joined any galaxies yet.' 
+            : 'No galaxies found in this category.'}
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredGalaxies.map(galaxy => (
+            <GalaxyCard
+              key={galaxy.id}
+              galaxy={galaxy}
+              onJoin={handleJoinClick}
+              canJoin={canJoinGalaxy(galaxy)}
+              canInteract={canInteractWithGalaxy(galaxy)}
+              getStatusBadge={getStatusBadge}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredGalaxies.map(galaxy => (
+            <GalaxyListItem
+              key={galaxy.id}
+              galaxy={galaxy}
+              onJoin={handleJoinClick}
+              canJoin={canJoinGalaxy(galaxy)}
+              canInteract={canInteractWithGalaxy(galaxy)}
+              getStatusBadge={getStatusBadge}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Private Galaxy Join Modal */}
+      {joiningGalaxy && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Join Private Galaxy: {joiningGalaxy.name}
+              </h3>
+              <button onClick={() => setJoiningGalaxy(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X size={24} />
+              </button>
+            </div>
+            <p className="mb-4 text-gray-600 dark:text-gray-300">
+              This galaxy requires a password to join.
+            </p>
+            <input
+              type="password"
+              placeholder="Enter galaxy password"
+              value={joinPassword}
+              onChange={(e) => setJoinPassword(e.target.value)}
+              className="w-full p-3 mb-4 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            />
+            <button
+              onClick={() => joinGalaxy(joiningGalaxy.id, joinPassword)}
+              className="w-full p-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Join Galaxy
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default GalaxyList;
+// Galaxy Card (Grid View)
+const GalaxyCard = ({ galaxy, onJoin, canJoin, canInteract, getStatusBadge }) => {
+  const statusBadge = getStatusBadge(galaxy.status);
+
+  return (
+    <div className="p-6 bg-white/5 dark:bg-gray-800/70 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-purple-600/30">
+      <div className="flex justify-between items-start mb-3">
+        <h4 className="text-2xl font-semibold text-purple-400 truncate flex-1">{galaxy.name}</h4>
+        <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border ${statusBadge.color}`}>
+          {statusBadge.icon}
+          {statusBadge.text}
+        </span>
+      </div>
+      
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+        Owner: <span className="font-semibold">{galaxy.owner_username}</span> | 
+        Category: <span className="font-semibold">{galaxy.category}</span>
+      </p>
+      
+      <p className="text-gray-700 dark:text-gray-300 line-clamp-2 mb-4">
+        {galaxy.description || 'No description provided.'}
+      </p>
+      
+      <div className="flex justify-between items-center mt-4">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {galaxy.member_count || 0} members
+        </div>
+        
+        {canJoin ? (
+          galaxy.is_member ? (
+            <button 
+              onClick={() => onJoin(galaxy)}
+              disabled={!canInteract}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                canInteract
+                  ? 'bg-pink-500 hover:bg-pink-600'
+                  : 'bg-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {canInteract ? 'Enter Galaxy 🚀' : 'View Only'}
+            </button>
+          ) : (
+            <button 
+              onClick={() => onJoin(galaxy)}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors"
+            >
+              {galaxy.status === 'private' ? 'Request Access 🔐' : 'Join'}
+            </button>
+          )
+        ) : (
+          <span className="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-200 dark:bg-gray-700 rounded-lg">
+            Unavailable
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Galaxy List Item (List View)
+const GalaxyListItem = ({ galaxy, onJoin, canJoin, canInteract, getStatusBadge }) => {
+  const statusBadge = getStatusBadge(galaxy.status);
+
+  return (
+    <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-colors">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-2">
+            <h4 className="text-xl font-semibold text-purple-400 truncate">{galaxy.name}</h4>
+            <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border ${statusBadge.color}`}>
+              {statusBadge.icon}
+              {statusBadge.text}
+            </span>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {galaxy.description || 'No description'}
+          </p>
+          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span>Owner: {galaxy.owner_username}</span>
+            <span>•</span>
+            <span>{galaxy.category}</span>
+            <span>•</span>
+            <span>{galaxy.member_count || 0} members</span>
+          </div>
+        </div>
+        
+        <div className="flex-shrink-0">
+          {canJoin ? (
+            galaxy.is_member ? (
+              <button 
+                onClick={() => onJoin(galaxy)}
+                disabled={!canInteract}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors whitespace-nowrap ${
+                  canInteract
+                    ? 'bg-pink-500 hover:bg-pink-600'
+                    : 'bg-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {canInteract ? 'Enter 🚀' : 'View Only'}
+              </button>
+            ) : (
+              <button 
+                onClick={() => onJoin(galaxy)}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap"
+              >
+                {galaxy.status === 'private' ? 'Join 🔐' : 'Join'}
+              </button>
+            )
+          ) : (
+            <span className="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-200 dark:bg-gray-700 rounded-lg">
+              Unavailable
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EnhancedGalaxyList;
